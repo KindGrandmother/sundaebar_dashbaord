@@ -1,0 +1,11 @@
+SBC30 sbc30-operations-pm-monthly-business-review-briefing-skill
+SBC31 sbc31-market-data-comparability-assessment-skill
+SBC32 sbc32-compliance-gap-analysis-skill
+SBC33 sbc33-regulatory-compliance-triage-skill
+SBC34 sbc34-regulatory-obligation-delta-analysis-skill
+SBC35 sbc35-executive-presentation-strategy-skill
+SBC36 sbc36-ma-due-diligence-signal-classification-skill
+SBC37 sbc37-investment-committee-memo-authoring-skill
+SBC38 sbc38-manager-coaching-and-1-on-1-preparation-skill
+SBC39 sbc39-enterprise-stakeholder-mapping-relationship-intelligence-skill
+SBC40 sbc40-compensation-talent-benchmarking-skill

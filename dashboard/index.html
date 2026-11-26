@@ -1,0 +1,194 @@
+<meta name="dash-one-writer">
+<meta name="dash-form" content="dashboard">
+<style>
+.sb { display: grid; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); color: var(--color-fg); }
+.sb-head { display: grid; gap: var(--cds-gap-xs); }
+.sb-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; }
+.sb-lede { margin: 0; color: var(--color-fg-muted); max-width: 70ch; }
+.sb-lede b { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+.sb-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-md); }
+.sb-bar label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); display: flex; align-items: center; gap: var(--cds-gap-xs); }
+.sb-asof { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-left: auto; }
+.sb-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--cds-gap-md); }
+.sb-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md) var(--cds-pad-lg); display: grid; gap: 2px; min-width: 0; }
+.sb-tile .k { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); text-transform: uppercase; letter-spacing: .04em; }
+.sb-tile .v { font-family: var(--font-anthropic-serif); font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.sb-tile .s { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); overflow-wrap: anywhere; }
+.sb-two { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--cds-gap-lg); align-items: start; }
+@media (max-width: 900px) { .sb-two { grid-template-columns: minmax(0, 1fr); } }
+.sb-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); min-width: 0; }
+.sb-card h2 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); display: flex; align-items: baseline; gap: var(--cds-gap-sm); flex-wrap: wrap; }
+.sb-card h2 small { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-weight: 400; }
+.sb-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.sb-scroll { overflow: auto; max-height: 620px; min-height: 80px; }
+.sb-scroll.short { max-height: 360px; }
+.sb table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+.sb th { position: sticky; top: 0; background: var(--color-panel); text-align: left; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); padding: 6px 8px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; z-index: 1; }
+.sb td { padding: 6px 8px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; vertical-align: middle; }
+.sb th.num, .sb td.num { text-align: right; }
+.sb tr.lead td { background: color-mix(in srgb, var(--color-ok) 12%, transparent); }
+.sb tr.me td:first-child { box-shadow: inset 3px 0 0 var(--color-warn); }
+.sb .hk { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; cursor: copy; border-bottom: 1px dotted var(--color-border-line); }
+.sb .hk:focus-visible { outline: 2px solid var(--color-warn); outline-offset: 2px; }
+.sb .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid currentColor; line-height: 16px; }
+.sb .ok { color: var(--color-ok); } .sb .warn { color: var(--color-warn); } .sb .bad { color: var(--color-bad); } .sb .mut { color: var(--color-fg-muted); }
+.sb .empty { padding: var(--cds-pad-md); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.sb input[type="search"] { font: inherit; font-size: var(--cds-font-size-caption); padding: 5px 8px; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); min-width: 0; width: 200px; max-width: 100%; }
+.sb-toast { position: absolute; right: 0; top: 0; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); padding: 4px 10px; border-radius: var(--cds-radius); font-size: var(--cds-font-size-caption); }
+.sb-wrap { position: relative; }
+</style>
+
+<div class="sb sb-wrap" id="board">
+  <header class="sb-head" id="head">
+    <h1 class="sb-title">SN121 Round Board · SBC40</h1>
+    <p class="sb-lede" id="lede">Round <b data-draw="l-round">—</b> is <b data-draw="l-state">—</b>. <b data-draw="l-leader">—</b> leads with <b data-draw="l-score">—</b>, and <b data-draw="l-wait">—</b> submissions are waiting to be scored.</p>
+  </header>
+
+  <div class="sb-bar" id="controls">
+    <label for="sb-best"><input type="checkbox" id="sb-best"> Best per miner</label>
+    <label for="sb-q"><input type="search" id="sb-q" placeholder="Filter user, UID or hotkey" aria-label="Filter by user, UID or hotkey"></label>
+    <span class="sb-asof" data-draw="asof">—</span>
+  </div>
+
+  <div class="sb-tiles" id="tiles">
+    <div class="sb-tile" id="t-leader"><span class="k">Leader</span><span class="v" data-draw="t-leader">—</span><span class="s" data-draw="t-leader-s">—</span></div>
+    <div class="sb-tile" id="t-top"><span class="k">Top score</span><span class="v" data-draw="t-top">—</span><span class="s">Leader must beat it by <span data-draw="t-margin">—</span></span></div>
+    <div class="sb-tile" id="t-subs"><span class="k">Submissions</span><span class="v" data-draw="t-subs">—</span><span class="s"><span data-draw="t-scored">—</span> scored · <span data-draw="t-failed">—</span> failed</span></div>
+    <div class="sb-tile" id="t-wait"><span class="k">Waiting</span><span class="v" data-draw="t-wait">—</span><span class="s">Not scored yet</span></div>
+    <div class="sb-tile" id="t-miners"><span class="k">Miners</span><span class="v" data-draw="t-miners">—</span><span class="s">Distinct hotkeys</span></div>
+    <div class="sb-tile" id="t-window"><span class="k">Window (UTC)</span><span class="v" style="font-size: var(--cds-font-size-heading)" data-draw="t-open">—</span><span class="s">closes <span data-draw="t-close">—</span></span></div>
+  </div>
+
+  <div class="sb-two" id="main">
+    <section class="sb-card" id="leaderboard">
+      <h2>Ranking <small data-draw="rank-count">—</small></h2>
+      <p class="sb-note">Scored submissions by score. Green row is the current leader. Click a hotkey to copy it.</p>
+      <div class="sb-scroll">
+        <table data-source="submissions" data-row-key="id" aria-label="Ranking">
+          <thead><tr><th data-field="pos" class="num">#</th><th data-field="username">User</th><th data-field="miner_uid" class="num">UID</th><th data-field="hotkey">Hotkey</th><th data-field="score" class="num">Score</th><th data-field="integrity">Integrity</th><th data-field="submission">Submission</th><th data-field="submitted">Submitted (UTC)</th><th data-field="sim_other" class="num">Sim. other</th></tr></thead>
+          <tbody data-draw="rank-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div style="display: grid; gap: var(--cds-gap-lg); min-width: 0;">
+      <section class="sb-card" id="queue">
+        <h2>Waiting <small data-draw="queue-count">—</small></h2>
+        <p class="sb-note">Uploaded but not scored yet, oldest first: number 1 is scored next.</p>
+        <div class="sb-scroll short">
+          <table data-source="submissions" data-row-key="id" aria-label="Waiting submissions">
+            <thead><tr><th class="num">Q</th><th data-field="username">User</th><th data-field="miner_uid" class="num">UID</th><th data-field="hotkey">Hotkey</th><th data-field="status">Status</th><th data-field="submitted">Submitted (UTC)</th></tr></thead>
+            <tbody data-draw="queue-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="sb-card" id="failed">
+        <h2>Failed <small data-draw="failed-count">—</small></h2>
+        <p class="sb-note">Evaluation failed; the fee is credited back if the failure was on sundae_bar's side.</p>
+        <div class="sb-scroll short">
+          <table data-source="submissions" data-row-key="id" aria-label="Failed submissions">
+            <thead><tr><th data-field="username">User</th><th data-field="miner_uid" class="num">UID</th><th data-field="hotkey">Hotkey</th><th data-field="submission">Submission</th><th data-field="submitted">Submitted (UTC)</th></tr></thead>
+            <tbody data-draw="failed-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+  <span data-draw="toast"></span>
+</div>
+
+<script>
+window.sb = window.sb || { round: null, best: false, q: '', toast: '' };
+const S = window.sb;
+const DONE = new Set(['scored', 'failed']);
+const short = (h) => (h && h.length > 14 ? h.slice(0, 6) + '…' + h.slice(-5) : h || '');
+const num = (v) => (v === '' || v == null ? null : +v);
+const user = (u) => (u ? '@' + u : '(no username)');
+const fmtScore = (v) => (num(v) == null ? '—' : num(v).toFixed(3));
+S.rounds = () => { const r = dash.data('rounds'); return r.status === 'ok' ? r.data : null; };
+S.cur = () => { const R = S.rounds(); if (!R || !R.length) return null; return R.find((r) => r.round === 'SBC40') || R[0]; };
+S.subs = () => { const r = dash.data('submissions'); return r.status === 'ok' ? r.data : null; };
+S.match = (s) => { if (!S.q) return true; const q = S.q.toLowerCase(); return [s.username, s.miner_uid, s.hotkey, s.submission].some((x) => String(x ?? '').toLowerCase().includes(q)); };
+S.redraw = () => ['l-round','l-state','l-leader','l-score','l-wait','asof','t-leader','t-leader-s','t-top','t-margin','t-subs','t-scored','t-failed','t-wait','t-miners','t-open','t-close','rank-count','rank-body','queue-count','queue-body','failed-count','failed-body'].forEach((n) => dash.draw(n));
+S.copy = (hk) => { const done = (m) => { S.toast = m; dash.draw('toast'); clearTimeout(S.tt); S.tt = setTimeout(() => { S.toast = ''; dash.draw('toast'); }, 1600); };
+  try { navigator.clipboard.writeText(hk).then(() => done('Hotkey copied'), () => done(hk)); } catch (e) { done(hk); } };
+S.hkCell = (td, hk) => { const sp = document.createElement('span'); sp.className = 'hk'; sp.textContent = short(hk); sp.title = hk; sp.tabIndex = 0; sp.setAttribute('role', 'button'); sp.setAttribute('aria-label', 'Copy hotkey ' + hk);
+  sp.onclick = () => S.copy(hk); sp.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); S.copy(hk); } }; td.replaceChildren(sp); };
+S.row = (tr, cells) => cells.forEach(([txt, cls]) => { const td = document.createElement('td'); if (typeof txt === 'function') txt(td); else td.textContent = txt; if (cls) td.className = cls; tr.appendChild(td); });
+S.pill = (txt, cls) => (td) => { const p = document.createElement('span'); p.className = 'pill ' + cls; p.textContent = txt; td.replaceChildren(p); };
+S.statusCls = (s) => (s === 'scored' ? 'ok' : s === 'failed' ? 'bad' : 'warn');
+S.empty = (tb, cols, msg) => { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = cols; td.className = 'empty'; td.textContent = msg; tr.appendChild(td); tb.replaceChildren(tr); };
+
+document.querySelectorAll('#sb-best').forEach((el) => { el.onchange = () => { S.best = el.checked; dash.draw('rank-body'); dash.draw('rank-count'); }; });
+document.querySelectorAll('#sb-q').forEach((el) => { el.oninput = () => { S.q = el.value.trim(); ['rank-body','rank-count','queue-body','failed-body'].forEach((n) => dash.draw(n)); }; });
+
+
+const text = (name, f, field) => dash.draw(name, (el) => {
+  const c = S.cur();
+  if (!c) { el.textContent = '—'; return; }
+  el.textContent = f(c);
+  if (field) { el.setAttribute('data-source', 'rounds'); el.setAttribute('data-field', field); el.setAttribute('data-where', 'round=' + encodeURIComponent(c.round)); }
+});
+text('l-round', (c) => c.round + ' (' + c.title + ')');
+text('l-state', (c) => (c.state === 'open' ? 'open until ' + c.closes + ' UTC' : 'closed'));
+text('l-leader', (c) => (c.leader_hotkey ? user(c.leader_user) + ' (UID ' + c.leader_uid + ')' : 'nobody'));
+text('l-score', (c) => fmtScore(c.leader_score), 'leader_score');
+text('l-wait', (c) => c.waiting, 'waiting');
+text('t-leader', (c) => (c.leader_hotkey ? user(c.leader_user) : '—'), 'leader_user');
+text('t-leader-s', (c) => (c.leader_hotkey ? 'UID ' + c.leader_uid + ' · ' + short(c.leader_hotkey) + ' · ' + fmtScore(c.leader_score) : 'No scored entry'));
+text('t-top', (c) => fmtScore(c.top_score), 'top_score');
+text('t-margin', (c) => fmtScore(c.margin) + ' points', 'margin');
+text('t-subs', (c) => c.submissions, 'submissions');
+text('t-scored', (c) => c.scored, 'scored');
+text('t-failed', (c) => c.failed, 'failed');
+text('t-wait', (c) => c.waiting, 'waiting');
+text('t-miners', (c) => c.miners, 'miners');
+text('t-open', (c) => c.opens, 'opens');
+text('t-close', (c) => c.closes, 'closes');
+text('asof', (c) => 'Data as of ' + c.fetched + ' UTC', 'fetched');
+
+S.roundSubs = () => { const A = S.subs(), c = S.cur(); return A && c ? A.filter((s) => s.round === c.round) : null; };
+S.ranked = () => { const A = S.roundSubs(); if (!A) return null;
+  let r = A.filter((s) => s.status === 'scored' && num(s.score) != null).sort((a, b) => num(a.pos) - num(b.pos));
+  if (S.best) { const seen = new Set(); r = r.filter((s) => { const k = s.hotkey || s.username; if (seen.has(k)) return false; seen.add(k); return true; }); }
+  return r; };
+
+dash.draw('rank-count', (el) => { const r = S.ranked(); el.textContent = r ? r.filter(S.match).length + (S.best ? ' miners' : ' entries') : '—'; });
+dash.draw('rank-body', (tb) => {
+  const r = S.ranked();
+  if (!r) { const st = dash.data('submissions').status; if (st === 'error') S.empty(tb, 9, 'Could not load submissions.'); else tb.replaceChildren(); return; }
+  const rows = r.filter(S.match);
+  if (!rows.length) { S.empty(tb, 9, S.q ? 'No scored entry matches the filter.' : 'Nothing scored in this round yet.'); return; }
+  tb.replaceChildren(...rows.map((s) => { const tr = document.createElement('tr'); tr.dataset.key = encodeURIComponent(s.id); if (s.leader === 'yes') tr.className = 'lead';
+    const integ = s.integrity || '';
+    S.row(tr, [[s.pos, 'num'], [user(s.username)], [s.miner_uid, 'num'], [(td) => S.hkCell(td, s.hotkey)], [fmtScore(s.score), 'num'],
+      [S.pill(integ || '—', integ === 'active' ? 'ok' : integ ? 'bad' : 'mut')], [s.submission], [s.submitted], [num(s.sim_other) == null ? '—' : num(s.sim_other).toFixed(3), 'num']]);
+    return tr; }));
+});
+
+S.waiting = () => { const A = S.roundSubs(); return A ? A.filter((s) => !DONE.has(s.status)).sort((a, b) => (a.submitted < b.submitted ? -1 : 1)) : null; };
+dash.draw('queue-count', (el) => { const w = S.waiting(); el.textContent = w ? w.length + ' waiting' : '—'; });
+dash.draw('queue-body', (tb) => {
+  const w = S.waiting();
+  if (!w) { tb.replaceChildren(); return; }
+  const rows = w.map((s, i) => [i + 1, s]).filter(([, s]) => S.match(s));
+  if (!rows.length) { S.empty(tb, 6, w.length ? 'No waiting entry matches the filter.' : 'Queue is empty: every submission in this round has a result.'); return; }
+  tb.replaceChildren(...rows.map(([q, s]) => { const tr = document.createElement('tr'); tr.dataset.key = encodeURIComponent(s.id);
+    S.row(tr, [[q, 'num'], [user(s.username)], [s.miner_uid, 'num'], [(td) => S.hkCell(td, s.hotkey)], [S.pill(s.status, 'warn')], [s.submitted]]); return tr; }));
+});
+
+S.failedList = () => { const A = S.roundSubs(); return A ? A.filter((s) => s.status === 'failed') : null; };
+dash.draw('failed-count', (el) => { const f = S.failedList(); el.textContent = f ? f.length + ' failed' : '—'; });
+dash.draw('failed-body', (tb) => {
+  const f = S.failedList();
+  if (!f) { tb.replaceChildren(); return; }
+  const rows = f.filter(S.match);
+  if (!rows.length) { S.empty(tb, 5, f.length ? 'No failed entry matches the filter.' : 'No failed evaluations in this round.'); return; }
+  tb.replaceChildren(...rows.map((s) => { const tr = document.createElement('tr'); tr.dataset.key = encodeURIComponent(s.id);
+    S.row(tr, [[user(s.username)], [s.miner_uid, 'num'], [(td) => S.hkCell(td, s.hotkey)], [s.submission], [s.submitted]]); return tr; }));
+});
+
+
+dash.draw('toast', (el) => { el.className = S.toast ? 'sb-toast' : ''; el.textContent = S.toast || ''; el.setAttribute('role', 'status'); });
+</script>
