@@ -7,6 +7,7 @@ for its own 20-second update, to see the latest data.
     python live_board.py                 # live round, refresh every 60 s
     python live_board.py --round 40      # a specific round
     python live_board.py --every 30 --port 8121
+    python live_board.py --once site     # one read, writes site/index.html + site/data.json (GitHub Pages)
 
 Needs the same venv as submit_skill.py (Playwright + `playwright install chromium`).
 """
@@ -211,6 +212,7 @@ a{color:var(--accent)}
 <div class="sc s"><table><thead><tr><th>User</th><th class="n">UID</th><th>Hotkey</th><th>Submission</th><th>Submitted (UTC)</th></tr></thead><tbody id="fail"></tbody></table></div></section></div></div>
 </div>
 <script>
+const STATIC=false;
 let D=null,ERR=null,BUSY=false;const $=id=>document.getElementById(id);
 const user=u=>u?'@'+u:'(no username)',sh=h=>h&&h.length>14?h.slice(0,6)+'…'+h.slice(-5):(h||''),f3=v=>v==null?'—':(+v).toFixed(3);
 function el(t,txt,cls){const e=document.createElement(t);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;return e}
@@ -242,10 +244,39 @@ function draw(){
  fill('fail',F.filter(match).map(r=>row([[user(r.username)],[r.uid,'n'],[hk(r.hotkey)],[r.submission],[r.submitted]])),5,'No failed evaluations.');
  document.title=(L?f3(L.score)+' '+user(L.username)+' · ':'')+'SN121 Live Board';
 }
-async function load(){try{const s=await (await fetch('/data.json',{cache:'no-store'})).json();D=s.data||D;ERR=s.error;BUSY=s.busy}catch(e){ERR='board server not running'}draw()}
-$('best').onchange=draw;$('q').oninput=draw;$('now').onclick=async()=>{await fetch('/refresh');BUSY=true;draw();setTimeout(load,1500)};
-load();setInterval(load,20000);
+async function load(){try{const s=await (await fetch((STATIC?'data.json?t=':'/data.json?t=')+Date.now(),{cache:'no-store'})).json();D=s.data||D;ERR=s.error;BUSY=s.busy}catch(e){ERR=STATIC?'could not load data.json':'board server not running'}draw()}
+$('best').onchange=draw;$('q').oninput=draw;
+if(STATIC){$('now').hidden=true}else{$('now').onclick=async()=>{await fetch('/refresh');BUSY=true;draw();setTimeout(load,1500)}}
+load();setInterval(load,STATIC?60000:20000);
 </script></body></html>"""
+
+
+def once(args):
+    import os
+    os.makedirs(args.once, exist_ok=True)
+    with open(os.path.join(args.once, "index.html"), "w", encoding="utf-8") as f:
+        f.write(PAGE.replace("const STATIC=false;", "const STATIC=true;"))
+    err = None
+    with sync_playwright() as p:
+        b = p.chromium.launch(headless=True)
+        pg = b.new_page(viewport={"width": 1400, "height": 1800})
+        for attempt in range(3):
+            try:
+                d = scrape(pg, args.round)
+                break
+            except Exception as e:
+                err = f"{type(e).__name__}: {e}"
+                print("read failed:", err, file=sys.stderr, flush=True)
+                time.sleep(10)
+        else:
+            d = None
+        b.close()
+    out = {"data": d, "error": None if d else err, "busy": False}
+    with open(os.path.join(args.once, "data.json"), "w", encoding="utf-8") as f:
+        json.dump(out, f)
+    if d:
+        print(f"[{d['fetched']} UTC] {d['round']}: {d['count']} submissions, {d['waiting']} waiting", flush=True)
+    return 0 if d else 1
 
 
 def main():
@@ -253,7 +284,10 @@ def main():
     ap.add_argument("--round", type=int, default=None, help="round number, e.g. 40 (default: the live round)")
     ap.add_argument("--every", type=int, default=60, help="seconds between reads of the Lab (default 60, minimum 20)")
     ap.add_argument("--port", type=int, default=8121)
+    ap.add_argument("--once", metavar="DIR", help="read the Lab once, write DIR/data.json and DIR/index.html, then exit (for GitHub Pages)")
     args = ap.parse_args()
+    if args.once:
+        return once(args)
     args.every = max(20, args.every)
     wake = threading.Event()
     H.wake = wake
@@ -267,4 +301,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
