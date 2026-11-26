@@ -32,7 +32,7 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
       - name: Read the Lab
-        run: python live_board.py --once site
+        run: python dashboard/live_board.py --once site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
