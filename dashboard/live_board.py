@@ -278,7 +278,8 @@ h1{font-size:22px;margin:0 0 4px}.lede{color:var(--mut);margin:0 0 14px}.lede b{
 .bar input[type=search]{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg);width:220px;max-width:100%}
 button.b{font:inherit;padding:5px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg);cursor:pointer}
 button.b.pri{background:var(--accent);border-color:var(--accent);color:#fff}
-.asof{margin-left:auto}.err{color:var(--bad)}
+.asof{margin-left:auto}.err{color:var(--bad)}.gst{color:var(--mut);font-size:12.5px}.gst a{margin-left:4px}button.b:disabled{opacity:.6;cursor:default}
+.tk input{font:inherit;width:100%;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}.tk ol{margin:0;padding-left:20px}.tk li{margin:3px 0}.tk .row{display:flex;gap:8px;flex-wrap:wrap}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
 .t{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;min-width:0}
 .t .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}.t .v{font-size:22px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.t .s{font-size:12px;color:var(--mut);overflow-wrap:anywhere}
@@ -318,6 +319,7 @@ tr.avg td{font-weight:600;border-top:2px solid var(--line)}
 <div class="bar"><label><input type="checkbox" id="best"> Best per miner</label>
 <input type="search" id="q" placeholder="Filter user, UID or hotkey" aria-label="Filter">
 <button class="b" id="now" type="button">Read the Lab now</button>
+<span id="gst" class="gst" aria-live="polite"></span><button class="lk" id="gtk" type="button" hidden>GitHub token</button>
 <span class="asof" id="asof"></span></div>
 <div class="tiles" id="tiles"></div>
 <div class="two"><section class="card"><h2>Ranking <small id="rc"></small></h2><p class="note">Click a <b>score</b> for per-sample grades, a <b>submission</b> to download its skill, a <b>Sim. other</b> value for the closest other submission. Green = current leader; blue edge = submitted in the last hour.</p>
@@ -442,7 +444,41 @@ function draw(){
 }
 async function load(){try{const s=await (await fetch((STATIC?'data.json?t=':'/data.json?t=')+Date.now(),{cache:'no-store'})).json();D=s.data||D;ERR=s.error;BUSY=s.busy}catch(e){ERR=STATIC?'could not load data.json':'board server not running'}if(!$('dlg').open)draw()}
 $('best').onchange=draw;$('q').oninput=draw;$('dlg').addEventListener('close',draw);
-if(STATIC){$('now').hidden=true}else{$('now').onclick=async()=>{await fetch('/refresh');BUSY=true;draw();setTimeout(load,1500)}}
+// ---- GitHub Pages: the button starts the workflow through GitHub's API with the owner's token (kept only in this browser)
+const GH=(()=>{const m=location.hostname.match(/^([^.]+)\.github\.io$/i);if(!m)return null;const r=location.pathname.split('/').filter(Boolean)[0];return {o:m[1],r:r||location.hostname}})();
+const TK='sn121_gh_token',sleep=ms=>new Promise(r=>setTimeout(r,ms)),mmss=ms=>{const s=Math.max(0,Math.round(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+function tok(){try{return localStorage.getItem(TK)||''}catch(e){return ''}}
+function setTok(v){try{v?localStorage.setItem(TK,v):localStorage.removeItem(TK)}catch(e){}$('gtk').hidden=!v}
+function gst(t,cls,url){const s=$('gst');s.className='gst'+(cls?' '+cls:'');s.replaceChildren(document.createTextNode(t));if(url){const a=el('a','see run');a.href=url;a.target='_blank';a.rel='noopener';s.appendChild(a)}}
+async function gh(path,opt={}){const r=await fetch('https://api.github.com/repos/'+GH.o+'/'+GH.r+path,{...opt,cache:'no-store',headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',Authorization:'Bearer '+tok(),...(opt.body?{'Content-Type':'application/json'}:{})}});
+ if(r.status===401){setTok('');throw new Error('GitHub rejected the token; enter a new one')}
+ if(!r.ok)throw new Error('GitHub '+r.status+(r.status===403||r.status===404?': the token needs Actions "Read and write" on '+GH.r:''));return r.status===204?null:r.json()}
+let WF=null,TRACK=false;
+async function wf(){if(WF)return WF;const w=(await gh('/actions/workflows')).workflows.filter(w=>w.state==='active');
+ WF=w.find(w=>/\/(main|board)\.ya?ml$/.test(w.path))||w.find(w=>/board/i.test(w.name))||w[0];if(!WF)throw new Error('no active workflow in '+GH.r);return WF}
+async function runs(){return (await gh('/actions/workflows/'+(await wf()).id+'/runs?per_page=10')).workflow_runs}
+async function step(run){try{const j=(await gh('/actions/runs/'+run.id+'/jobs')).jobs[0];const s=j&&j.steps&&j.steps.find(s=>s.status==='in_progress');return s?s.name.replace(/^Run /,''):''}catch(e){return ''}}
+async function track(run){if(TRACK)return;TRACK=true;$('now').disabled=true;const t0=Date.parse(run.created_at),before=D&&D.fetched;
+ try{while(run.status!=='completed'){gst(run.status==='queued'||run.status==='waiting'?'Update queued on GitHub… '+mmss(Date.now()-t0):'Updating: '+((await step(run))||'running')+'… '+mmss(Date.now()-t0));await sleep(5000);run=await gh('/actions/runs/'+run.id)}
+  if(run.conclusion!=='success'){gst('Update '+run.conclusion+'. ','err',run.html_url);return}
+  gst('Published, loading the new data…');for(let i=0;i<24;i++){await load();if(D&&D.fetched!==before)break;await sleep(5000)}
+  gst(D&&D.fetched!==before?'Updated in '+mmss(Date.now()-t0)+'.':'Published; the site may take a minute to show it.','ok')}
+ catch(e){gst(e.message,'err')}finally{TRACK=false;$('now').disabled=false}}
+async function refreshNow(){if(!tok())return askTok();if(TRACK)return;$('now').disabled=true;gst('Starting an update…');
+ try{const rs=await runs();let run=rs.find(r=>r.status!=='completed');
+  if(!run){const seen=new Set(rs.map(r=>r.id)),repo=await gh('');await gh('/actions/workflows/'+(await wf()).id+'/dispatches',{method:'POST',body:JSON.stringify({ref:repo.default_branch})});
+   for(let i=0;i<20&&!run;i++){await sleep(3000);run=(await runs()).find(r=>!seen.has(r.id))}if(!run)throw new Error('GitHub accepted the request but no run appeared yet; try again in a minute')}
+  $('now').disabled=false;await track(run)}
+ catch(e){$('now').disabled=false;gst(e.message,'err');if(!tok())askTok()}}
+function askTok(){const inp=el('input');inp.type='password';inp.autocomplete='off';inp.placeholder='github_pat_…';inp.setAttribute('aria-label','GitHub token');
+ const ol=el('ol');const nt='https://github.com/settings/personal-access-tokens/new';
+ [['On GitHub open ',['Settings → Developer settings → Fine-grained tokens → Generate new token',nt]],['Repository access: ',null,'Only select repositories → '+GH.r],['Permissions → Repository permissions → ',null,'Actions: Read and write (nothing else)'],['Generate it and paste it below.']].forEach(([a,l,b])=>{const li=el('li',a);if(l){const x=el('a',l[0]);x.href=l[1];x.target='_blank';x.rel='noopener';li.appendChild(x)}if(b)li.appendChild(el('b',b));ol.appendChild(li)});
+ const save=el('button','Save and update','b pri');save.type='button';save.onclick=()=>{const v=inp.value.trim();if(!v){inp.focus();return}setTok(v);$('dlg').close();refreshNow()};
+ inp.onkeydown=e=>{if(e.key==='Enter')save.click()};const bt=el('div',null,'row');bt.appendChild(save);
+ if(tok()){const f=el('button','Forget saved token','b');f.type='button';f.onclick=()=>{setTok('');$('dlg').close();gst('Token removed from this browser.')};bt.appendChild(f)}
+ const box=el('div',null,'tk');box.append(el('p','The button asks GitHub to run this site\'s update workflow (about 2 minutes). That needs a GitHub token from the repository owner. It is kept only in this browser and sent only to api.github.com.'),ol,inp,bt);
+ openModal('Connect GitHub','One-time setup for '+GH.o+'/'+GH.r,[box]);setTimeout(()=>inp.focus(),50)}
+if(STATIC){if(GH){$('now').textContent='Refresh now';$('now').onclick=refreshNow;$('gtk').onclick=askTok;$('gtk').hidden=!tok();if(tok())runs().then(rs=>{const r=rs.find(r=>r.status!=='completed');if(r)track(r)}).catch(()=>{})}else $('now').hidden=true}else{$('now').onclick=async()=>{await fetch('/refresh');BUSY=true;draw();setTimeout(load,1500)}}
 load();setInterval(load,STATIC?60000:20000);
 </script></body></html>"""
 
@@ -473,7 +509,7 @@ def once(args):
                 print("read failed:", err, file=sys.stderr, flush=True)
                 time.sleep(10)
         if d:
-            n = fetch_details(pg, d["url"], d["rows"], limit=args.details_max, budget_s=420)
+            n = fetch_details(pg, d["url"], d["rows"], limit=args.details_max, budget_s=150)
             left = sum(r["status"] in DONE and r["id"] not in DETAILS for r in d["rows"])
             print(f"details: +{n} read{f', {left} left for the next update' if left else ''}", flush=True)
         b.close()
