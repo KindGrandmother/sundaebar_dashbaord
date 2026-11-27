@@ -1,9 +1,7 @@
 name: SN121 board
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
+  workflow_dispatch:   # started by the site's "Refresh now" button (or Actions → Run workflow)
 
 permissions:
   contents: read
