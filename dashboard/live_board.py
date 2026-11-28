@@ -425,12 +425,12 @@ function draw(){
  if(!D){$('asof').appendChild(document.createTextNode(BUSY?'Reading the Lab…':''));return}
  $('asof').appendChild(document.createTextNode('Data as of '+D.fetched+' UTC'+(BUSY?' · updating…':'')));
  $('rname').textContent='· '+D.round;const L=D.leader;
- $('lede').replaceChildren(document.createTextNode(D.round+' ('+D.title+') is '+(D.open?'open until '+D.closes+' UTC':'closed')+'. '),
+ $('lede').replaceChildren(document.createTextNode(D.round+' ('+D.title+') is '+(D.open?'open until '+D.closes+' UTC':D.opens>D.fetched?'not open yet: submissions open '+D.opens+' UTC':'closed')+'. '),
   el('b',L?user(L.username)+' (UID '+L.uid+')':'Nobody'),document.createTextNode(L?' leads with ':' leads.'),el('b',L?f3(L.score):''),
   document.createTextNode(L?'; a new entry needs more than '+f3(L.score+D.margin)+' to take the lead. ':' '),el('b',String(D.waiting)),document.createTextNode(' waiting. '));
  const a=el('a','Open on sundaebar.ai');a.href=D.url+'/submissions';a.target='_blank';a.rel='noopener';$('lede').appendChild(a);
  const T=[['Leader',L?user(L.username):'—',L?'UID '+L.uid+' · '+sh(L.hotkey):''],['Leader score',L?f3(L.score):'—','Top score '+f3(D.top)],['To take the lead',L?'> '+f3(L.score+D.margin):'—','Leader + '+f3(D.margin)+' margin'],
-  ['Submissions',D.count,D.scored+' scored · '+D.failed+' failed'],['Waiting',D.waiting,'Not scored yet'],['Miners',D.miners,'Distinct hotkeys'],['Closes (UTC)',D.closes||'—','Opened '+D.opens]];
+  ['Submissions',D.count,D.scored+' scored · '+D.failed+' failed'],['Waiting',D.waiting,'Not scored yet'],['Miners',D.miners,'Distinct hotkeys'],['Closes (UTC)',D.closes||'—',(D.opens>D.fetched?'Opens ':'Opened ')+D.opens]];
  $('tiles').replaceChildren(...T.map(([k,v,s])=>{const t=el('div',null,'t');t.append(el('div',k,'k'),el('div',String(v),'v'),el('div',s,'s'));return t}));
  let R=D.rows.filter(r=>r.status==='scored'&&r.score!=null).sort((a,b)=>a.pos-b.pos);
  if($('best').checked){const s=new Set();R=R.filter(r=>{const k=r.hotkey||r.username;if(s.has(k))return false;s.add(k);return true})}
